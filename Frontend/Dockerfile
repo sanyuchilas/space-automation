@@ -9,4 +9,4 @@ RUN cd server && npm i
 
 EXPOSE 5173
 
-CMD node server.js
+CMD node server/server.js
