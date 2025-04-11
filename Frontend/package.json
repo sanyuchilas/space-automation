@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "postinstall": "sh ./scripts/generate-env.sh"
+    "postinstall": "sh ./scripts/generate-env.sh",
+    "prod": "pnpm run build && docker compose --env-file .env up -d --build"
   },
   "dependencies": {
     "react": "^19.0.0",

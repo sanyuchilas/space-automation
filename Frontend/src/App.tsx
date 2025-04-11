@@ -110,23 +110,23 @@ function App() {
     return data.imageUrl;
   };
 
-  const postCorrectImage = async (url: string) => {
-    const { data, systemError } = await makeRequest<{
-      path: string;
-      cloud_precentage: number;
-    }>(`${getCorrectionServiceUrl()}/correct`, {
-      method: "POST",
-      body: JSON.stringify({
-        path: url,
-      }),
-    });
+  // const postCorrectImage = async (url: string) => {
+  //   const { data, systemError } = await makeRequest<{
+  //     path: string;
+  //     cloud_precentage: number;
+  //   }>(`${getCorrectionServiceUrl()}/correct`, {
+  //     method: "POST",
+  //     body: JSON.stringify({
+  //       path: url,
+  //     }),
+  //   });
 
-    if (systemError) {
-      return null;
-    }
+  //   if (systemError) {
+  //     return null;
+  //   }
 
-    return data.path;
-  };
+  //   return data.path;
+  // };
 
   const postSegmentCloudsImage = async (url: string) => {
     const { data, systemError } = await makeRequest<{
@@ -166,17 +166,17 @@ function App() {
       normalImageUrl = maybeNormalImageUrl;
     }
 
-    const correctedImageUrl = await postCorrectImage(normalImageUrl);
+    // const correctedImageUrl = await postCorrectImage(normalImageUrl);
 
-    if (!correctedImageUrl) {
-      setProcessingStatus("error");
-      return;
-    }
+    // if (!correctedImageUrl) {
+    //   setProcessingStatus("error");
+    //   return;
+    // }
 
-    setProcessedImageUrl(correctedImageUrl);
+    // setProcessedImageUrl(correctedImageUrl);
     setProcessingStatus("cloud-segmentation");
 
-    const processedImageUrl = await postSegmentCloudsImage(correctedImageUrl);
+    const processedImageUrl = await postSegmentCloudsImage(normalImageUrl);
 
     if (!processedImageUrl) {
       setProcessingStatus("error");
