@@ -7,10 +7,10 @@ COPY ./dist /app/dist
 
 RUN cd server && npm i
 
-ARG VITE_PORT=5173
+ARG VITE_PORT
 
 ENV VITE_PORT=${VITE_PORT}
 
 EXPOSE ${VITE_PORT}
 
-CMD ["node", "server/server.js"]
+CMD ["node", "--env-file=./server/.env", "./server/server.js"]

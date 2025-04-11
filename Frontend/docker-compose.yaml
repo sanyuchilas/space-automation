@@ -1,6 +1,9 @@
 services:
   web:
-    build: .
+    build:
+      context: .
+      args:
+        VITE_PORT: "${VITE_PORT}"
     ports:
       - "${VITE_PORT}:${VITE_PORT}"
     restart: "always"
