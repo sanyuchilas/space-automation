@@ -13,4 +13,4 @@ ENV VITE_PORT=${VITE_PORT}
 
 EXPOSE ${VITE_PORT}
 
-CMD ["node", "--env-file=./server/.env", "./server/server.js"]
+CMD ["node", "./server/server.js"]
