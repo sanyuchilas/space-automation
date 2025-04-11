@@ -1,6 +1,10 @@
 import { ChangeEventHandler, MouseEventHandler, useState } from "react";
 import styles from "./App.module.css";
-import { getMainServiceUrl, makeRequest } from "@/shared";
+import {
+  getCorrectionServiceUrl,
+  getMainServiceUrl,
+  makeRequest,
+} from "@/shared";
 
 type ProcessingStatus =
   | "correction"
@@ -43,6 +47,8 @@ function App() {
       url,
       file,
     });
+    setProcessingStatus("uploaded");
+    setProcessedImageUrl(null);
   };
 
   const getStatusText = () => {
@@ -84,6 +90,117 @@ function App() {
     return data.serverImages;
   };
 
+  const postLoadImage = async (image: File) => {
+    const body = new FormData();
+
+    body.append("uploadFile", image);
+
+    const { data, systemError } = await makeRequest<{
+      imageUrl: string;
+    }>(`${getMainServiceUrl()}/load_image`, {
+      method: "POST",
+      body,
+      contentType: "formatdata",
+    });
+
+    if (systemError) {
+      return null;
+    }
+
+    return data.imageUrl;
+  };
+
+  const postCorrectImage = async (url: string) => {
+    const { data, systemError } = await makeRequest<{
+      path: string;
+      cloud_precentage: number;
+    }>(`${getCorrectionServiceUrl()}/correct`, {
+      method: "POST",
+      body: JSON.stringify({
+        path: url,
+      }),
+    });
+
+    if (systemError) {
+      return null;
+    }
+
+    return data.path;
+  };
+
+  const postSegmentCloudsImage = async (url: string) => {
+    const { data, systemError } = await makeRequest<{
+      path: string;
+      cloud_precentage: number;
+    }>(`${getMainServiceUrl()}/segment-clouds`, {
+      method: "POST",
+      body: JSON.stringify({
+        path: url,
+      }),
+    });
+
+    if (systemError) {
+      return null;
+    }
+
+    return data.path;
+  };
+
+  const handleImage = async (image: Image | null): Promise<void> => {
+    if (!image) {
+      return;
+    }
+
+    setProcessingStatus("correction");
+
+    let normalImageUrl: string = image.url;
+
+    if (image.file) {
+      const maybeNormalImageUrl = await postLoadImage(image.file);
+
+      if (!maybeNormalImageUrl) {
+        setProcessingStatus("error");
+        return;
+      }
+
+      normalImageUrl = maybeNormalImageUrl;
+    }
+
+    const correctedImageUrl = await postCorrectImage(normalImageUrl);
+
+    if (!correctedImageUrl) {
+      setProcessingStatus("error");
+      return;
+    }
+
+    setProcessedImageUrl(correctedImageUrl);
+    setProcessingStatus("cloud-segmentation");
+
+    const processedImageUrl = await postSegmentCloudsImage(correctedImageUrl);
+
+    if (!processedImageUrl) {
+      setProcessingStatus("error");
+      return;
+    }
+
+    setProcessingStatus("processed");
+    setProcessedImageUrl(processedImageUrl);
+  };
+
+  const getLastImage = async () => {
+    const { data, systemError } = await makeRequest<{
+      path: string;
+    }>(`${getCorrectionServiceUrl()}/last-image`, {
+      method: "GET",
+    });
+
+    if (systemError) {
+      return null;
+    }
+
+    return data.path;
+  };
+
   const onServerImagesClick: MouseEventHandler<
     HTMLDetailsElement
   > = async () => {
@@ -111,47 +228,66 @@ function App() {
     });
   };
 
+  const onGetLastButtonClick = async () => {
+    const maybeUrl = await getLastImage();
+
+    if (!maybeUrl) {
+      return;
+    }
+
+    setUploadedImage({
+      file: null,
+      url: maybeUrl,
+    });
+  };
+
   return (
     <>
       <div className={styles.controls}>
         <details onClick={onServerImagesClick}>
           <summary>Есть на сервере</summary>
-          {isServerImagesLoaded && (
+          {isServerImagesLoaded && serverImages.length !== 0 && (
             <p className={styles.server_image}>
               <span>0</span> <span>normal</span>| <span>corrected</span>|
               <span>processed</span>
             </p>
           )}
           {!isServerImagesLoaded && <p>Загрузка...</p>}
-          {isServerImagesLoaded &&
-            serverImages.map(({ normal, corrected, processed }, i) => (
-              <p className={styles.server_image} key={normal}>
-                <span>{i + 1}</span>
-                <a href={normal} onClick={onServerImageClick}>
-                  {getServerImageName(normal)}
-                </a>
-                |
-                {corrected ? (
-                  <a href={corrected} onClick={onServerImageClick}>
-                    {getServerImageName(corrected)}
+          {isServerImagesLoaded && (
+            <>
+              {serverImages.length === 0 && <p>Пока пусто ;(</p>}
+              {serverImages.map(({ normal, corrected, processed }, i) => (
+                <p className={styles.server_image} key={normal}>
+                  <span>{i + 1}</span>
+                  <a href={normal} onClick={onServerImageClick}>
+                    {getServerImageName(normal)}
                   </a>
-                ) : (
-                  <span>null</span>
-                )}
-                |
-                {processed ? (
-                  <a href={processed} onClick={onServerImageClick}>
-                    {getServerImageName(processed)}
-                  </a>
-                ) : (
-                  <span>null</span>
-                )}
-              </p>
-            ))}
+                  |
+                  {corrected ? (
+                    <a href={corrected} onClick={onServerImageClick}>
+                      {getServerImageName(corrected)}
+                    </a>
+                  ) : (
+                    <span>null</span>
+                  )}
+                  |
+                  {processed ? (
+                    <a href={processed} onClick={onServerImageClick}>
+                      {getServerImageName(processed)}
+                    </a>
+                  ) : (
+                    <span>null</span>
+                  )}
+                </p>
+              ))}
+            </>
+          )}
         </details>
         <hr />
         <div className={styles.load}>
-          <button type="button">Выгрузить последнее со спутника</button>
+          <button type="button" onClick={onGetLastButtonClick}>
+            Выгрузить последнее со спутника
+          </button>
           <input
             type="file"
             name="image"
@@ -160,7 +296,9 @@ function App() {
           />
         </div>
         <hr />
-        <button type="button">Обработать изображение</button>
+        <button type="button" onClick={() => handleImage(uploadedImage)}>
+          Обработать изображение
+        </button>
       </div>
       <div className={styles.images}>
         <div>
@@ -169,6 +307,7 @@ function App() {
             src={uploadedImage?.url ?? "#"}
             id="uploaded-image"
             alt="Uploaded Image"
+            width={512}
           />
         </div>
         <div>
@@ -180,6 +319,7 @@ function App() {
               src={processedImageUrl ?? "#"}
               id="processed-image"
               alt="Processed Image"
+              width={512}
             />
           )}
         </div>

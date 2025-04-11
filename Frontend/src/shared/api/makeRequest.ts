@@ -15,6 +15,7 @@ export const makeRequest = async <Data extends object>(
     headers: Headers;
     body: BodyInit;
     schema: z.ZodTypeAny;
+    contentType: "json" | "formatdata";
   }>,
 ): Promise<HttpResponse<Data>> => {
   const {
@@ -22,12 +23,13 @@ export const makeRequest = async <Data extends object>(
     headers = new Headers(),
     body,
     schema,
+    contentType = "json",
   } = params ?? {
     method: "GET",
     body: null,
   };
 
-  if (!headers.has("Content-Type")) {
+  if (contentType === "json") {
     headers.append("Content-Type", "application/json");
   }
 
