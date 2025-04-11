@@ -24,9 +24,8 @@ def segmentate_image(path: str):
     resized_tensor = functional.resize(four_channel_tensor.unsqueeze(0), (384, 384))
     resized_tensor.to(device)
     segmentated_tensor = unet(resized_tensor)
-    segmentated_images_dir = os.getenv("SEGMENTATED_IMAGES_DIR")
     image_file = path.split("/")[-1]
-    segmentated_image_path = os.path.join(segmentated_images_dir, image_file)
+    segmentated_image_path = os.path.join("processed-images", image_file)
     torchvision.utils.save_image(segmentated_tensor, segmentated_image_path)
     cloud_percentage = calculate_cloud_percentage(segmentated_tensor)
     return {"path": segmentated_image_path,
