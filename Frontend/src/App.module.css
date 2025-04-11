@@ -23,3 +23,13 @@
 
   gap: 8px;
 }
+
+.server_image {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 8px;
+
+  word-break: break-all;
+}
