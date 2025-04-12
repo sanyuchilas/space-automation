@@ -2,14 +2,22 @@ version: '3.8'
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        PORT: '${SEGMENTATION_SERVICE_PORT}'
     ports:
-      - "8000:8000"
+      - '${SEGMENTATION_SERVICE_PORT}:${SEGMENTATION_SERVICE_PORT}'
     volumes:
-      - "/:/host-rootfs"
+      - '/:/host-rootfs'
+      - ./../normal-images:/app/normal-images
+      - ./../corrected-images:/app/corrected-images
+      - ./../processed-images:/app/processed-images
     environment:
       - PYTHONUNBUFFERED=1
-      - SEGMENTATED_IMAGES_DIR=/Users/nurtilekm/Desktop/дз/прситс
+      - PROCESSED_IMAGES_DIR=${PROCESSED_IMAGES_DIR}
+      - NORMAL_IMAGES_DIR=${NORMAL_IMAGES_DIR}
+      - CORRECTED_IMAGES_DIR=${CORRECTED_IMAGES_DIR}
     command: >
       sh -c "sleep 5 &&
       poetry run gunicorn -k uvicorn.workers.UvicornWorker -w 1

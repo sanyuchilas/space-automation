@@ -25,10 +25,11 @@ def segmentate_image(path: str):
     resized_tensor.to(device)
     segmentated_tensor = unet(resized_tensor)
     image_file = path.split("/")[-1]
-    segmentated_image_path = os.path.join("processed-images", image_file)
+    filename = f"p_{image_file[2:]}"
+    segmentated_image_path = os.path.join(os.getenv("PROCESSED_IMAGES_DIR"), filename)
     torchvision.utils.save_image(segmentated_tensor, segmentated_image_path)
     cloud_percentage = calculate_cloud_percentage(segmentated_tensor)
-    return {"path": segmentated_image_path,
+    return {"filename": filename,
             "cloud_percentage": cloud_percentage}
 
 

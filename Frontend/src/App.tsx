@@ -90,10 +90,14 @@ function App() {
     return data.serverImages;
   };
 
-  const postLoadImage = async (image: File) => {
+  const postLoadImage = async (image: Image) => {
     const body = new FormData();
 
-    body.append("uploadFile", image);
+    if (image.file) {
+      body.append("uploadFile", image.file);
+    }
+
+    body.append("previewFileName", getImageNameFromUrl(image.url));
 
     const { data, systemError } = await makeRequest<{
       imageUrl: string;
@@ -117,7 +121,7 @@ function App() {
   //   }>(`${getCorrectionServiceUrl()}/correct`, {
   //     method: "POST",
   //     body: JSON.stringify({
-  //       path: url,
+  //       path: getImageNameFromUrl(url),
   //     }),
   //   });
 
@@ -135,7 +139,7 @@ function App() {
     }>(`${getMainServiceUrl()}/segment-clouds`, {
       method: "POST",
       body: JSON.stringify({
-        path: url,
+        path: getImageNameFromUrl(url),
       }),
     });
 
@@ -153,17 +157,11 @@ function App() {
 
     setProcessingStatus("correction");
 
-    let normalImageUrl: string = image.url;
+    const maybeNormalImageUrl = await postLoadImage(image);
 
-    if (image.file) {
-      const maybeNormalImageUrl = await postLoadImage(image.file);
-
-      if (!maybeNormalImageUrl) {
-        setProcessingStatus("error");
-        return;
-      }
-
-      normalImageUrl = maybeNormalImageUrl;
+    if (!maybeNormalImageUrl) {
+      setProcessingStatus("error");
+      return;
     }
 
     // const correctedImageUrl = await postCorrectImage(normalImageUrl);
@@ -173,10 +171,10 @@ function App() {
     //   return;
     // }
 
-    // setProcessedImageUrl(correctedImageUrl);
+    // setProcessedImageUrl(getImageUrl(correctedImageUrl));
     setProcessingStatus("cloud-segmentation");
 
-    const processedImageUrl = await postSegmentCloudsImage(normalImageUrl);
+    const processedImageUrl = await postSegmentCloudsImage(maybeNormalImageUrl);
 
     if (!processedImageUrl) {
       setProcessingStatus("error");
@@ -211,7 +209,7 @@ function App() {
     setServerImages(await getServerImages());
   };
 
-  const getServerImageName = (url: string) => {
+  const getImageNameFromUrl = (url: string) => {
     const splittedUrl = url.split("/");
 
     return splittedUrl[splittedUrl.length - 1];
@@ -260,12 +258,12 @@ function App() {
                 <p className={styles.server_image} key={normal}>
                   <span>{i + 1}</span>
                   <a href={normal} onClick={onServerImageClick}>
-                    {getServerImageName(normal)}
+                    {getImageNameFromUrl(normal)}
                   </a>
                   |
                   {corrected ? (
                     <a href={corrected} onClick={onServerImageClick}>
-                      {getServerImageName(corrected)}
+                      {getImageNameFromUrl(corrected)}
                     </a>
                   ) : (
                     <span>null</span>
@@ -273,7 +271,7 @@ function App() {
                   |
                   {processed ? (
                     <a href={processed} onClick={onServerImageClick}>
-                      {getServerImageName(processed)}
+                      {getImageNameFromUrl(processed)}
                     </a>
                   ) : (
                     <span>null</span>
@@ -291,7 +289,7 @@ function App() {
           <input
             type="file"
             name="image"
-            accept="image/png, image/jpeg"
+            accept="image/png, image/jpeg, image/jpg"
             onChange={onInputChange}
           />
         </div>
