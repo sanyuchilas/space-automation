@@ -31,6 +31,9 @@ app.mount("/normal-images", StaticFiles(directory="normal-images"), name="normal
 app.mount("/corrected-images", StaticFiles(directory="corrected-images"), name="corrected-images")
 app.mount("/processed-images", StaticFiles(directory="processed-images"), name="processed-images")
         
+def get_time_from_filename(filename):
+    date_part, time_part, ms_part = filename.split('_')[-3:]  # "20250413", "133423", "104666"
+    return int(date_part), int(time_part), int(ms_part.split(".")[0])
 
 def generate_unique_filename(original_filename: str) -> str:
     """Генерирует уникальное имя файла с текущей датой и временем"""
@@ -181,7 +184,7 @@ async def get_server_images(request: Request):
         processed_dir = os.getenv("PROCESSED_IMAGES_DIR")
 
         # Получаем список файлов в каждой директории
-        normal_images = set(os.listdir(normal_dir))
+        normal_images = set(sorted(os.listdir(normal_dir), key=get_time_from_filename))
         corrected_images = set(os.listdir(corrected_dir)) if path_exists(corrected_dir) else set()
         processed_images = set(os.listdir(processed_dir)) if path_exists(processed_dir) else set()
 

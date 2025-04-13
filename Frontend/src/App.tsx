@@ -1,4 +1,4 @@
-import { ChangeEventHandler, MouseEventHandler, useState } from "react";
+import { ChangeEventHandler, MouseEventHandler, useRef, useState } from "react";
 import styles from "./App.module.css";
 import {
   getCorrectionServiceUrl,
@@ -33,6 +33,7 @@ function App() {
     useState<ProcessingStatus>("uploaded");
   const [serverImages, setServerImages] = useState<ServerImage[]>([]);
   const [isServerImagesLoaded, setIsServerImagesLoaded] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null!);
 
   const onInputChange: ChangeEventHandler<HTMLInputElement> = event => {
     const [file] = event.target.files ?? [null];
@@ -227,6 +228,7 @@ function App() {
       url: target.href,
     });
     setProcessedImageUrl(null);
+    formRef.current.reset();
   };
 
   const onGetLastButtonClick = async () => {
@@ -240,6 +242,17 @@ function App() {
       file: null,
       url: maybeUrl,
     });
+    setProcessedImageUrl(null);
+    formRef.current.reset();
+  };
+
+  const getTimeFromFilename = (filename: string) => {
+    const parts = filename.split("_"); // Разделяем по '_'
+    const datePart = parts[parts.length - 3]; // "20250413"
+    const timePart = parts[parts.length - 2]; // "133423"
+    const msPart = parts[parts.length - 1].split(".")[0]; // "104666" (убираем .jpg)
+
+    return [parseInt(datePart), parseInt(timePart), parseInt(msPart)];
   };
 
   return (
@@ -257,35 +270,45 @@ function App() {
           {isServerImagesLoaded && (
             <>
               {serverImages.length === 0 && <p>Пока пусто ;(</p>}
-              {serverImages.map(({ normal, corrected, processed }, i) => (
-                <p className={styles.server_image} key={normal}>
-                  <span>{i + 1}</span>
-                  <a href={normal} onClick={onServerImageClick}>
-                    {getImageNameFromUrl(normal)}
-                  </a>
-                  |
-                  {corrected ? (
-                    <a href={corrected} onClick={onServerImageClick}>
-                      {getImageNameFromUrl(corrected)}
+              {serverImages
+                .sort(({ normal: a }, { normal: b }) => {
+                  const [aDate, aTime, aMs] = getTimeFromFilename(a);
+                  const [bDate, bTime, bMs] = getTimeFromFilename(b);
+
+                  // Сравниваем дату -> время -> миллисекунды
+                  if (aDate !== bDate) return aDate - bDate;
+                  if (aTime !== bTime) return aTime - bTime;
+                  return aMs - bMs;
+                })
+                .map(({ normal, corrected, processed }, i) => (
+                  <p className={styles.server_image} key={normal}>
+                    <span>{i + 1}</span>
+                    <a href={normal} onClick={onServerImageClick}>
+                      {getImageNameFromUrl(normal)}
                     </a>
-                  ) : (
-                    <span>null</span>
-                  )}
-                  |
-                  {processed ? (
-                    <a href={processed} onClick={onServerImageClick}>
-                      {getImageNameFromUrl(processed)}
-                    </a>
-                  ) : (
-                    <span>null</span>
-                  )}
-                </p>
-              ))}
+                    |
+                    {corrected ? (
+                      <a href={corrected} onClick={onServerImageClick}>
+                        {getImageNameFromUrl(corrected)}
+                      </a>
+                    ) : (
+                      <span>null</span>
+                    )}
+                    |
+                    {processed ? (
+                      <a href={processed} onClick={onServerImageClick}>
+                        {getImageNameFromUrl(processed)}
+                      </a>
+                    ) : (
+                      <span>null</span>
+                    )}
+                  </p>
+                ))}
             </>
           )}
         </details>
         <hr />
-        <div className={styles.load}>
+        <form ref={formRef} className={styles.load}>
           <button type="button" onClick={onGetLastButtonClick}>
             Выгрузить последнее со спутника
           </button>
@@ -295,7 +318,7 @@ function App() {
             accept="image/png, image/jpeg, image/jpg"
             onChange={onInputChange}
           />
-        </div>
+        </form>
         <hr />
         <button type="button" onClick={() => handleImage(uploadedImage)}>
           Обработать изображение
