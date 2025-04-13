@@ -36,7 +36,6 @@ export const makeRequest = async <Data extends object>(
   const requestOptions: RequestInit = {
     method,
     headers,
-    credentials: "include",
   };
 
   if (body) {

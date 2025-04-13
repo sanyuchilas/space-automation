@@ -114,23 +114,23 @@ function App() {
     return data.imageUrl;
   };
 
-  // const postCorrectImage = async (url: string) => {
-  //   const { data, systemError } = await makeRequest<{
-  //     path: string;
-  //     cloud_precentage: number;
-  //   }>(`${getCorrectionServiceUrl()}/correct`, {
-  //     method: "POST",
-  //     body: JSON.stringify({
-  //       path: getImageNameFromUrl(url),
-  //     }),
-  //   });
+  const postCorrectImage = async (url: string) => {
+    const { data, systemError } = await makeRequest<{
+      path: string;
+      cloud_precentage: number;
+    }>(`${getCorrectionServiceUrl()}/correct`, {
+      method: "POST",
+      body: JSON.stringify({
+        path: getImageNameFromUrl(url),
+      }),
+    });
 
-  //   if (systemError) {
-  //     return null;
-  //   }
+    if (systemError) {
+      return null;
+    }
 
-  //   return data.path;
-  // };
+    return data.path;
+  };
 
   const postSegmentCloudsImage = async (url: string) => {
     const { data, systemError } = await makeRequest<{
@@ -158,24 +158,24 @@ function App() {
     setProcessingStatus("correction");
     setProcessedImageUrl(null);
 
-    const maybeNormalImageUrl = await postLoadImage(image);
+    const normalImageUrl = await postLoadImage(image);
 
-    if (!maybeNormalImageUrl) {
+    if (!normalImageUrl) {
       setProcessingStatus("error");
       return;
     }
 
-    // const correctedImageUrl = await postCorrectImage(normalImageUrl);
+    const correctedImageUrl = await postCorrectImage(normalImageUrl);
 
-    // if (!correctedImageUrl) {
-    //   setProcessingStatus("error");
-    //   return;
-    // }
+    if (!correctedImageUrl) {
+      setProcessingStatus("error");
+      return;
+    }
 
-    // setProcessedImageUrl(getImageUrl(correctedImageUrl));
+    setProcessedImageUrl(correctedImageUrl);
     setProcessingStatus("cloud-segmentation");
 
-    const processedImageUrl = await postSegmentCloudsImage(maybeNormalImageUrl);
+    const processedImageUrl = await postSegmentCloudsImage(correctedImageUrl);
 
     if (!processedImageUrl) {
       setProcessingStatus("error");
@@ -184,6 +184,7 @@ function App() {
 
     setProcessingStatus("processed");
     setProcessedImageUrl(processedImageUrl);
+    setServerImages(await getServerImages());
   };
 
   const getLastImage = async () => {

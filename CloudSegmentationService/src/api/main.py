@@ -79,7 +79,7 @@ def path_exists(path: str) -> bool:
 
 @app.post("/segment-clouds")
 async def segment_clouds(request: Request, file_path: FilePath):
-    path = safe_path_join(os.getenv("NORMAL_IMAGES_DIR"), file_path.path)
+    path = safe_path_join(os.getenv("CORRECTED_IMAGES_DIR"), file_path.path)
     segmentated_image = segmentate_image(path)
     filename = segmentated_image["filename"]
     cloud_percentage = segmentated_image["cloud_percentage"]

@@ -10,7 +10,6 @@ services:
       - SFTP_USER=your_user
       - SFTP_PASSWORD=your_password
       - SFTP_REMOTE_FOLDER=/remote/path
-      - PROCESSED_IMAGES_DIR=${PROCESSED_IMAGES_DIR}
       - NORMAL_IMAGES_DIR=${NORMAL_IMAGES_DIR}
       - CORRECTED_IMAGES_DIR=${CORRECTED_IMAGES_DIR}
     volumes:
