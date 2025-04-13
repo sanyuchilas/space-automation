@@ -156,6 +156,7 @@ function App() {
     }
 
     setProcessingStatus("correction");
+    setProcessedImageUrl(null);
 
     const maybeNormalImageUrl = await postLoadImage(image);
 
@@ -224,6 +225,7 @@ function App() {
       file: null,
       url: target.href,
     });
+    setProcessedImageUrl(null);
   };
 
   const onGetLastButtonClick = async () => {

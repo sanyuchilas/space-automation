@@ -1,11 +1,12 @@
 import os
+import re
 from datetime import datetime
 from fastapi import FastAPI, UploadFile, File, Request, HTTPException, Form, status
 from fastapi.staticfiles import StaticFiles
 import shutil
 from src.api.schemas import FilePath
 from src.service.image_segmentation import segmentate_image
-from urllib.parse import urljoin
+from urllib.parse import urljoin, unquote
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Optional
 
@@ -53,10 +54,32 @@ def get_path(filename: str, request: Request) -> str:
         return urljoin(base_url, f"/corrected-images/{filename}")
     else:
         return urljoin(base_url, f"/processed-images/{filename}")
+    
+def safe_path_join(base: str, filename: str) -> str:
+    """Безопасное соединение путей с декодированием URL-encoded символов"""
+    # Декодируем URL-encoded символы (%20 → пробел и т.д.)
+    decoded_filename = unquote(filename)
+    # Удаляем потенциально опасные символы
+    safe_filename = re.sub(r'[\\/:*?"<>|]', '', decoded_filename)
+    path = os.path.join(base, safe_filename)
+    
+    print(f"Safe path: {path}")
+    
+    return path
+
+def path_exists(path: str) -> bool:
+        """Проверка существования файла с учетом пробелов"""
+        
+        print(f"Unquote path: {unquote(path)}")
+        
+        try:
+            return os.path.exists(unquote(path))
+        except Exception:
+            return False
 
 @app.post("/segment-clouds")
 async def segment_clouds(request: Request, file_path: FilePath):
-    path = os.path.join(os.getenv("NORMAL_IMAGES_DIR"), file_path.path)
+    path = safe_path_join(os.getenv("NORMAL_IMAGES_DIR"), file_path.path)
     segmentated_image = segmentate_image(path)
     filename = segmentated_image["filename"]
     cloud_percentage = segmentated_image["cloud_percentage"]
@@ -72,9 +95,13 @@ async def load_image(
     corrected_dir = os.getenv("CORRECTED_IMAGES_DIR")
     processed_dir = os.getenv("PROCESSED_IMAGES_DIR")
     
+    print(f"{normal_dir} {corrected_dir} {processed_dir}")
+    
+    print(f"previewFileName: {previewFileName}")
+    
     if uploadFile is not None:
         filename = f"n_{generate_unique_filename(uploadFile.filename)}"
-        normal_path = os.path.join(normal_dir, filename)
+        normal_path = safe_path_join(normal_dir, filename)
         
         print(f"Unique filename: {filename}")
         print(f"File: {uploadFile}")
@@ -95,9 +122,12 @@ async def load_image(
     # Проверяем первые два символа previewFileName
     if previewFileName.startswith("n_"):
         # Проверяем существование файла в normal-images
-        normal_path = os.path.join(normal_dir, previewFileName)
-        if os.path.exists(normal_path):
-            return {"imageUrl": f"/normal-images/{previewFileName}"}
+        normal_path = safe_path_join(normal_dir, previewFileName)
+        
+        print(f"normal_path: {normal_path}")
+        
+        if path_exists(normal_path):
+            return {"imageUrl": get_path(previewFileName, request)}
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -108,13 +138,19 @@ async def load_image(
         source_path = None
         
         # Проверяем corrected-images
-        corrected_path = os.path.join(corrected_dir, previewFileName)
-        if os.path.exists(corrected_path):
+        corrected_path = safe_path_join(corrected_dir, previewFileName)
+        
+        print(f"corrected_path: {corrected_path}")
+        
+        if path_exists(corrected_path):
             source_path = corrected_path
         else:
             # Проверяем processed-images
-            processed_path = os.path.join(processed_dir, previewFileName)
-            if os.path.exists(processed_path):
+            processed_path = safe_path_join(processed_dir, previewFileName)
+            
+            print(f"processed_path: {corrected_path}")
+            
+            if path_exists(processed_path):
                 source_path = processed_path
         
         if not source_path:
@@ -125,11 +161,11 @@ async def load_image(
         
         # Копируем файл в normal-images с префиксом n_
         new_filename = f"n_{previewFileName}"
-        dest_path = os.path.join(normal_dir, new_filename)
+        dest_path = safe_path_join(normal_dir, new_filename)
         
         try:
             shutil.copy2(source_path, dest_path)
-            return {"imageUrl": f"/normal-images/{new_filename}"}
+            return {"imageUrl": get_path(new_filename, request)}
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -146,8 +182,8 @@ async def get_server_images(request: Request):
 
         # Получаем список файлов в каждой директории
         normal_images = set(os.listdir(normal_dir))
-        corrected_images = set(os.listdir(corrected_dir)) if os.path.exists(corrected_dir) else set()
-        processed_images = set(os.listdir(processed_dir)) if os.path.exists(processed_dir) else set()
+        corrected_images = set(os.listdir(corrected_dir)) if path_exists(corrected_dir) else set()
+        processed_images = set(os.listdir(processed_dir)) if path_exists(processed_dir) else set()
 
         server_images = []
 

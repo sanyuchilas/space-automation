@@ -1,0 +1,19 @@
+services:
+  go-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '8080:8080'
+    environment:
+      - SFTP_HOST=your_sftp_host
+      - SFTP_USER=your_user
+      - SFTP_PASSWORD=your_password
+      - SFTP_REMOTE_FOLDER=/remote/path
+      - PROCESSED_IMAGES_DIR=${PROCESSED_IMAGES_DIR}
+      - NORMAL_IMAGES_DIR=${NORMAL_IMAGES_DIR}
+      - CORRECTED_IMAGES_DIR=${CORRECTED_IMAGES_DIR}
+    volumes:
+      - ./../normal-images:/app/normal-images
+      - ./../corrected-images:/app/corrected-images
+      - ./../processed-images:/app/processed-images
