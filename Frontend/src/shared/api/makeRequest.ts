@@ -48,7 +48,7 @@ export const makeRequest = async <Data extends object>(
 
     let res: HttpResponse<Data>;
 
-    if (!isDevelopment()) {
+    if (isDevelopment()) {
       res = (await mockedFetch(url)) as HttpResponse<Data>;
     } else {
       res = (await fetch(url, requestOptions)) as HttpResponse<Data>;
